@@ -250,16 +250,13 @@ class TSPSolver:
     def fancy(self, time_allowance=60.0, NUM_ANTS=20, PHEROMONE_WEIGHT=1.0, STANDARD_WEIGHT=2.0, WEIGHT_CONSTANT=0.01,
               CHECK_FOR_CONVERGENCE=250, distance_adjustment=10, PERSONALITY_WEIGHT=1.0):
         # Functions
-        minDistance = float('inf')
-        maxDistance = float('-inf')
         homesickness = 2
-        def get_transition_probability(idx1, idx2, antType, depth, distanceMatrix, xSortCities, ySortCities):
+        def get_transition_probability(idx1, idx2, antType, depth, distanceMatrix, minDistance, maxDistance):
             if antType == 'homesick':
                 if depth < ncities/homesickness:
-                    return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/minDistance, -PERSONALITY_WEIGHT)
-
-                else
                     return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/maxDistance, -PERSONALITY_WEIGHT)
+                else:
+                    return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/maxDistance, PERSONALITY_WEIGHT)
             elif antType == 'lonely':
                 return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
             elif antType == 'extrovert':
@@ -277,14 +274,16 @@ class TSPSolver:
             xSortCities = []
             ySortCities = []
 
+            minDistance = float('inf')
+            maxDistance = float('-inf')
             if antType == 'homesick':
                 distanceMatrix = [[float('inf') for x in range(ncities)] for y in range(ncities)]
                 for i in range(ncities):
                     for j in range(ncities):
                         distanceMatrix[i][j] = cities[i].distanceTo(cities[j])
-                        if distanceMatrix[i][j] < min:
+                        if distanceMatrix[i][j] < minDistance:
                             minDistance = distanceMatrix[i][j]
-                        if distanceMatrix[i][j] > max:
+                        if distanceMatrix[i][j] > maxDistance:
                             maxDistance = distanceMatrix[i][j]
 
             if antType == 'extrovert':
@@ -299,7 +298,7 @@ class TSPSolver:
                 for n in range(ncities):
                     if n in path or edge_distances[curr_idx][n] == float('inf'):  # already visited or inf
                         continue
-                    n_sum += get_transition_probability(curr_idx, n, antType, len(path), distanceMatrix, xSortCities, ySortCities)
+                    n_sum += get_transition_probability(curr_idx, n, antType, len(path), distanceMatrix, minDistance, maxDistance)
                     possible_next.append(n)
 
                 if len(possible_next) == 0:  # avoid getting caught when no more possible edges
@@ -308,7 +307,7 @@ class TSPSolver:
                 r = np.random.uniform(0.0, n_sum)
                 x = 0.0
                 for nn in possible_next:
-                    x += get_transition_probability(curr_idx, nn)
+                    x += get_transition_probability(curr_idx, nn, antType, len(path), distanceMatrix, minDistance, maxDistance)
                     if r <= x:
                         dist += edge_distances[curr_idx][nn]
                         curr_idx = nn
@@ -351,7 +350,7 @@ class TSPSolver:
                     cost = float('inf')  # Get a valid path
                     while cost == float('inf'):
                         homeCity = random.randint(0, ncities - 1)
-                        antpath, cost = get_probablistic_path_from(homeCity)
+                        antpath, cost = get_probablistic_path_from(homeCity, "normal")
 
                     if cost < new_bssf:
                         new_bssf = cost
