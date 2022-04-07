@@ -248,13 +248,18 @@ class TSPSolver:
 		algorithm</returns>
 	'''
     def fancy(self, time_allowance=60.0, NUM_ANTS=20, PHEROMONE_WEIGHT=1.0, STANDARD_WEIGHT=2.0, WEIGHT_CONSTANT=0.01,
-              CHECK_FOR_CONVERGENCE=250, distance_adjustment=10):
+              CHECK_FOR_CONVERGENCE=250, distance_adjustment=10, PERSONALITY_WEIGHT=1.0):
         # Functions
+        minDistance = float('inf')
+        maxDistance = float('-inf')
+        homesickness = 2
         def get_transition_probability(idx1, idx2, antType, depth, distanceMatrix, xSortCities, ySortCities):
             if antType == 'homesick':
-                if depth < ncities:
+                if depth < ncities/homesickness:
+                    return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/minDistance, -PERSONALITY_WEIGHT)
 
-                return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow()
+                else
+                    return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/maxDistance, -PERSONALITY_WEIGHT)
             elif antType == 'lonely':
                 return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
             elif antType == 'extrovert':
@@ -277,6 +282,11 @@ class TSPSolver:
                 for i in range(ncities):
                     for j in range(ncities):
                         distanceMatrix[i][j] = cities[i].distanceTo(cities[j])
+                        if distanceMatrix[i][j] < min:
+                            minDistance = distanceMatrix[i][j]
+                        if distanceMatrix[i][j] > max:
+                            maxDistance = distanceMatrix[i][j]
+
             if antType == 'extrovert':
                 xSortCities = sorted(cities, key=lambda city: city._x)
                 ySortCities = sorted(cities, key=lambda city: city._y)
