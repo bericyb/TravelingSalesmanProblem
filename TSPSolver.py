@@ -248,7 +248,7 @@ class TSPSolver:
 		algorithm</returns>
 	'''
     def fancy(self, time_allowance=60.0, NUM_ANTS=20, PHEROMONE_WEIGHT=1.0, STANDARD_WEIGHT=2.0, WEIGHT_CONSTANT=0.01,
-              CHECK_FOR_CONVERGENCE=250, distance_adjustment=10, PERSONALITY_WEIGHT=1.0):
+              CHECK_FOR_CONVERGENCE=250, distance_adjustment=10, PERSONALITY_WEIGHT=2.0):
         # Functions
         homesickness = 2
         def get_transition_probability(idx1, idx2, antType, depth, distanceMatrix, minDistance, maxDistance):
@@ -260,7 +260,7 @@ class TSPSolver:
             elif antType == 'lonely':
                 return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
             elif antType == 'extrovert':
-                return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
+                return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/maxDistance, -PERSONALITY_WEIGHT)
             else:
                 return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
 
@@ -287,8 +287,19 @@ class TSPSolver:
                             maxDistance = distanceMatrix[i][j]
 
             if antType == 'extrovert':
+                distanceMatrix = [[float('inf') for x in range(ncities)] for y in range(ncities)]
                 xSortCities = sorted(cities, key=lambda city: city._x)
                 ySortCities = sorted(cities, key=lambda city: city._y)
+                xMiddle = xSortCities[ncities//2]
+                yMiddle = ySortCities[ncities//2]
+                middleCity = City(xMiddle._x, yMiddle._y)
+                for i in range(ncities):
+                    for j in range(ncities):
+                        distanceMatrix[i][j] = middleCity.distanceTo(cities[j])
+                        if distanceMatrix[i][j] < minDistance:
+                            minDistance = distanceMatrix[i][j]
+                        if distanceMatrix[i][j] > maxDistance:
+                            maxDistance = distanceMatrix[i][j]
 
 
 
