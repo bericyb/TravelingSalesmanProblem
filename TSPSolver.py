@@ -350,7 +350,7 @@ class TSPSolver:
                     cost = float('inf')  # Get a valid path
                     while cost == float('inf'):
                         homeCity = random.randint(0, ncities - 1)
-                        antpath, cost = get_probablistic_path_from(homeCity, "normal")
+                        antpath, cost = get_probablistic_path_from(homeCity, "homesick")
 
                     if cost < new_bssf:
                         new_bssf = cost
