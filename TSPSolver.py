@@ -250,6 +250,7 @@ class TSPSolver:
     def fancy(self, time_allowance=60.0, NUM_ANTS=20, PHEROMONE_WEIGHT=1.0, STANDARD_WEIGHT=2.0, WEIGHT_CONSTANT=0.01,
               CHECK_FOR_CONVERGENCE=250, distance_adjustment=10, PERSONALITY_WEIGHT=2.0):
         # Functions
+
         homesickness = 2
         def get_transition_probability(idx1, idx2, antType, depth, distanceMatrix, minDistance, maxDistance):
             if antType == 'homesick':
@@ -258,7 +259,28 @@ class TSPSolver:
                 else:
                     return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/maxDistance, PERSONALITY_WEIGHT)
             elif antType == 'lonely':
-                return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
+                clusters = distanceMatrix
+                clusterIndex = minDistance
+                average_cluster_size = sum([len(group) for group in clusters]) / len(clusters)
+                average_cluster_size = max(average_cluster_size, 1)
+                # print('Entered Decision')
+                if clusterIndex.count(-1) == ncities:  # Once all clusters are handled, treat the ant as a normal ant
+                    # print('Normal')
+                    return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
+                if clusterIndex[idx1] == -1:
+                    if clusterIndex[idx2] == -1:  # If both cities are not in a cluster, you may go to the other city, but at a probability that prefers clusters (if they exist)
+                        # print('-1 -1')
+                        return pow(edge_weights[idx1][idx2] * (1 / average_cluster_size), PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
+                    else:  # If the second city is in a cluster but the first isn't, go to the second if it has a decent cluster size compared to the average
+                        # print('-1 cluster')
+                        return pow(edge_weights[idx1][idx2] * (len(clusters[clusterIndex[idx2]]) / average_cluster_size), PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
+                else:
+                    if clusterIndex[idx2] == -1:  # If the first is in a cluster, but the second isn't, you don't want to leave the cluster.
+                        # print('cluster -1')
+                        return pow(edge_weights[idx1][idx2] * 0.5, PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
+                    else:  # If they are both in clusters, take the second city only if the cluster size is quite a bit bigger than the one you're in
+                        # print('cluster cluster')
+                        return pow(edge_weights[idx1][idx2] * (max((len(clusters[clusterIndex[idx2]]) - len(clusters[clusterIndex[idx1]]), 1)) / average_cluster_size), PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT)
             elif antType == 'extrovert':
                 return pow(edge_weights[idx1][idx2], PHEROMONE_WEIGHT) * pow(edge_distances[idx1][idx2], -STANDARD_WEIGHT) * pow(distanceMatrix[idx1][idx2]/maxDistance, -PERSONALITY_WEIGHT)
             else:
@@ -301,7 +323,26 @@ class TSPSolver:
                         if distanceMatrix[i][j] > maxDistance:
                             maxDistance = distanceMatrix[i][j]
 
-
+            if antType == 'lonely':
+                clusters = []
+                clusterIndex = [-1 for _ in cities]
+                for i in range(ncities):
+                    if clusterIndex[i] == -1:
+                        for j in range(ncities):
+                            if i != j:
+                                if cities[i].distanceTo(cities[j]) < 0.5:  # Found two close cities
+                                    if clusterIndex[j] == -1:
+                                        clusters.append([i, j])
+                                        clusterIndex[i] = len(clusters) - 1
+                                        clusterIndex[j] = len(clusters) - 1
+                                    else:
+                                        clusters[clusterIndex[j]].append(i)
+                                        clusterIndex[i] = clusterIndex[j]
+                                    break
+                # print(clusterIndex)
+                # print(clusters)
+                distanceMatrix = clusters
+                minDistance = clusterIndex
 
             while len(path) < ncities:
                 n_sum = 0.0
@@ -320,6 +361,11 @@ class TSPSolver:
                 for nn in possible_next:
                     x += get_transition_probability(curr_idx, nn, antType, len(path), distanceMatrix, minDistance, maxDistance)
                     if r <= x:
+                        if antType == 'lonely':
+                            if not clusterIndex[curr_idx] == -1:
+                                clusters[clusterIndex[curr_idx]].remove(curr_idx)
+                                clusterIndex[curr_idx] = -1
+                                # print(clusters)
                         dist += edge_distances[curr_idx][nn]
                         curr_idx = nn
                         path.append(nn)
@@ -349,6 +395,7 @@ class TSPSolver:
         edge_distances += distance_adjustment  # Todo this is so that the weight isn't inf
         edge_weights = np.full((ncities, ncities), 1.0, dtype=float)
 
+
         # Main loop
         while not converged and time.time() - start_time < time_allowance:
             for k in range(CHECK_FOR_CONVERGENCE):
@@ -361,7 +408,7 @@ class TSPSolver:
                     cost = float('inf')  # Get a valid path
                     while cost == float('inf'):
                         homeCity = random.randint(0, ncities - 1)
-                        antpath, cost = get_probablistic_path_from(homeCity, "homesick")
+                        antpath, cost = get_probablistic_path_from(homeCity, "normal")
 
                     if cost < new_bssf:
                         new_bssf = cost
